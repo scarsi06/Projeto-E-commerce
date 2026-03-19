@@ -26,4 +26,42 @@ router.post("/register", async (req, res) => {
   }
 });
 
+import jwt from "jsonwebtoken";
+
+router.post("/login", async (req, res) => {
+  const { email, senha } = req.body;
+
+  if (!email || !senha) {
+    return res.status(400).json({ error: "Email e senha são obrigatórios" });
+  }
+
+  try {
+    // busca usuário pelo email
+    const [rows]: any = await db.query("SELECT * FROM users WHERE email = ?", [email]);
+    const user = rows[0];
+
+    if (!user) {
+      return res.status(401).json({ error: "Usuário não encontrado" });
+    }
+
+    // compara senha
+    const senhaValida = await bcrypt.compare(senha, user.senha);
+    if (!senhaValida) {
+      return res.status(401).json({ error: "Senha inválida" });
+    }
+
+    // gera token JWT
+    const token = jwt.sign(
+      { id: user.id, email: user.email },
+      "segredo_super_secreto", // depois você coloca isso em variável de ambiente
+      { expiresIn: "1h" }
+    );
+
+    res.json({ message: "Login realizado com sucesso!", token });
+  } catch (error: any) {
+    console.error("Erro no login:", error.message);
+    res.status(500).json({ error: "Erro ao realizar login" });
+  }
+});
+
 export default router;
